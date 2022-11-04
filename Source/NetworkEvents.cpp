@@ -188,7 +188,6 @@ String NetworkEvents::handleSpecialMessages(const String& s)
     {
         StringArray tokens;
         tokens.addTokens(s, true);
-        //std::cout << "SyncSink::handleBroadcastMessage(): TrialType " << tokens[0] << " " << tokens[1] << std::endl;
         /* tokens[0] == TrialAlign; tokens[1] == IMGID */
         if (conditionMap.contains(tokens[1]))
         {
@@ -198,19 +197,19 @@ String NetworkEvents::handleSpecialMessages(const String& s)
         {
             std::cout << "Image ID " << tokens[1] << " not mappable to stimulus class!" << std::endl;
         }
-        std::cout << "TrialType for image " << tokens[1] << " at " << std::endl;
+        std::cout << "TrialType for image " << tokens[1] << " class " << currentStimClass << std::endl;
     }
     else if (s.startsWith("TrialAlign"))
     {
-        std::cout << "SyncSink::handleBroadcastMessage(): TrialAlign for " << currentStimClass << std::endl;
+        std::cout << "TrialAlign for " << currentStimClass << std::endl;
         if (currentStimClass > 0)
         {
-            pushTTLEvent(currentStimClass, 1);
+            pushTTLEvent(currentStimClass+8, 1);
         }
     }
     else if (s.startsWith("TrialEnd"))
     {
-        std::cout << "SyncSink::handleBroadcastMessage(): TrialEnd for " << currentStimClass << std::endl;
+        std::cout << "TrialEnd for " << currentStimClass << std::endl;
         //if (!nTrialsByStimClass.contains(currentStimClass))
         //{
         //	std::cout << "unregistered stim class " << currentStimClass << std::endl;
