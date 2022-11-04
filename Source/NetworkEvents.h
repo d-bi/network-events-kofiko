@@ -170,6 +170,15 @@ private:
     void triggerTTLEvent(StringTTL TTLmsg, juce::int64 sampleNum);
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (NetworkEvents);
+
+    HashMap<String, String> conditionMap; // hashmap for image ids
+    HashMap<String, int> conditionList; // hashmap for condition indexing
+    HashMap<int, String> conditionListInverse; // hashmap for index to condition string
+    std::vector<int> stimClasses;
+    int currentStimClass = -1;
+    int numConditions = -1;
+    void clearVars();
+    void pushTTLEvent(int channel, bool onOff);
 };
 
 #endif  // __NETWORKEVENT_H_91811541__

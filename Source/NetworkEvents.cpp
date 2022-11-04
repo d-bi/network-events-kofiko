@@ -130,9 +130,99 @@ void NetworkEvents::handleAsyncUpdate()
     makeNewSocket = true;
 }
 
+void NetworkEvents::clearVars()
+{
+    conditionMap.clear();
+    conditionList.clear();
+    conditionListInverse.clear();
+    stimClasses.clear();
+    numConditions = 0;
+    currentStimClass = -1;
+}
 
 String NetworkEvents::handleSpecialMessages(const String& s)
 {
+    /* Parse Kofiko */
+    // Beginning of trial: add conditions
+    //std::cout << text << std::endl;
+    if (s.startsWith("ClearDesign"))
+    {
+        clearVars();
+    }
+    else if (s.startsWith("AddCondition"))
+    {
+        StringArray tokens;
+        tokens.addTokens(s, true);
+        /* tokens[0] == AddCondition; tokens[1] == Name; tokens[2] == STIMCLASS;
+           tokens[3] == Visible; tokens[4] == 1; tokens[5] == TrialTypes; */
+        for (int i = 6; i < tokens.size(); i++)
+        {
+            //std::cout << tokens[i] << std::endl;
+            conditionMap.set(tokens[i], tokens[2]);
+
+        }
+        conditionList.set(tokens[2], numConditions);
+        conditionListInverse.set(numConditions, tokens[2]);
+        stimClasses.push_back(numConditions);
+        numConditions += 1;
+        std::cout << "add stimClass " << numConditions << std::endl;
+    }
+    else if (s.startsWith("TrialStart")) // Jialiang / Berkeley Kofiko -- Sept. 2022
+    {
+
+        StringArray tokens;
+        tokens.addTokens(s, true);
+        /* tokens[0] == TrialStart; tokens[1] == IMGID */
+        //std::cout << "SyncSink::handleBroadcastMessage(): TrialStart " << tokens[0] << " " << tokens[1] << std::endl;
+        if (conditionMap.contains(tokens[1]))
+        {
+            currentStimClass = conditionList[conditionMap[tokens[1]]];
+        }
+        else
+        {
+            std::cout << "Image ID " << tokens[1] << " not mappable to stimulus class!" << std::endl;
+        }
+        std::cout << "TrialStart for image " << tokens[1] << std::endl;
+    }
+    else if (s.startsWith("TrialType")) // Janis Kofiko -- deprecated
+    {
+        StringArray tokens;
+        tokens.addTokens(s, true);
+        //std::cout << "SyncSink::handleBroadcastMessage(): TrialType " << tokens[0] << " " << tokens[1] << std::endl;
+        /* tokens[0] == TrialAlign; tokens[1] == IMGID */
+        if (conditionMap.contains(tokens[1]))
+        {
+            currentStimClass = conditionList[conditionMap[tokens[1]]];
+        }
+        else
+        {
+            std::cout << "Image ID " << tokens[1] << " not mappable to stimulus class!" << std::endl;
+        }
+        std::cout << "TrialType for image " << tokens[1] << " at " << std::endl;
+    }
+    else if (s.startsWith("TrialAlign"))
+    {
+        std::cout << "SyncSink::handleBroadcastMessage(): TrialAlign for " << currentStimClass << std::endl;
+        if (currentStimClass > 0)
+        {
+            pushTTLEvent(currentStimClass, 1);
+        }
+    }
+    else if (s.startsWith("TrialEnd"))
+    {
+        std::cout << "SyncSink::handleBroadcastMessage(): TrialEnd for " << currentStimClass << std::endl;
+        //if (!nTrialsByStimClass.contains(currentStimClass))
+        //{
+        //	std::cout << "unregistered stim class " << currentStimClass << std::endl;
+        //	return;
+        //}
+        if (currentStimClass > 0)
+        {
+            pushTTLEvent(currentStimClass, 0);
+        }
+        currentStimClass = -1;
+    }
+
     /** Command is first substring */
     String cmd = s.initialSectionNotContaining(" ");
 
@@ -335,6 +425,18 @@ String NetworkEvents::handleSpecialMessages(const String& s)
     }
 
     return String ("NotHandled");
+}
+
+void NetworkEvents::pushTTLEvent(int channel, bool onOff)
+{
+    {
+        ScopedLock TTLlock(TTLqueueLock);
+        if (CoreServices::getAcquisitionStatus())
+        {
+            TTLQueue.push({ onOff, channel });
+        }
+    }
+    std::cout << "TTLHandled: Channel=" << String(channel + 1) << " on=" + String(int(onOff));
 }
 
 void NetworkEvents::triggerTTLEvent(StringTTL TTLmsg, juce::int64 sampleNum)
